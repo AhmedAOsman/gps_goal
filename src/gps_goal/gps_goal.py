@@ -1,4 +1,8 @@
 #!/usr/bin/python
+
+# Cloned code from https://github.com/danielsnider/gps_goal
+# to fix bug with sending gps_goal_pose 
+
 import rospy
 import click
 import math
@@ -85,10 +89,17 @@ class GpsGoal():
     lat = data.pose.position.y
     long = data.pose.position.x
     z = data.pose.position.z
-    euler = tf.transformations.euler_from_quaternion(data.pose.orientation)
-    roll = euler[0]
-    pitch = euler[1]
-    yaw = euler[2]
+    #### fix  from https://github.com/ros/geometry/issues/109#issuecomment-344702754
+
+    explicit_quat = [data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z, data.pose.orientation.w]
+    roll, pitch, yaw = tf.transformations.euler_from_quaternion(explicit_quat)
+
+    ### Old Code
+    #euler = tf.transformations.euler_from_quaternion(data.pose.orientation)
+    #roll = euler[0]
+    #pitch = euler[1]
+    #yaw = euler[2]
+
     self.do_gps_goal(lat, long, z=z, yaw=yaw, roll=roll, pitch=pitch)
 
   def gps_goal_fix_callback(self, data):
@@ -124,15 +135,17 @@ class GpsGoal():
     if status:
       rospy.loginfo(status)
 
+
 @click.command()
 @click.option('--lat', prompt='Latitude', help='Latitude')
 @click.option('--long', prompt='Longitude', help='Longitude')
 @click.option('--roll', '-r', help='Set target roll for goal', default=0.0)
 @click.option('--pitch', '-p', help='Set target pitch for goal', default=0.0)
 @click.option('--yaw', '-y', help='Set target yaw for goal', default=0.0)
+
+
 def cli_main(lat, long, roll, pitch, yaw):
   """Send goal to move_base given latitude and longitude
-
   \b
   Two usage formats:
   gps_goal.py --lat 43.658 --long -79.379 # decimal format
